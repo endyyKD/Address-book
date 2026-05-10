@@ -12,6 +12,12 @@ struct Person
     string name, surname, telNo, email, address;
 };
 
+struct User
+{
+    int id;
+    string login, password;
+};
+
 void getValidInt(int &number)
 {
     while (!(cin >> number))
@@ -23,9 +29,157 @@ void getValidInt(int &number)
     cin.ignore(1000, '\n');
 }
 
+void clearScreen()
+{
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+void waitForEnter()
+{
+    cout << "\nPress Enter to continue...";
+    cin.ignore(1000, '\n');
+}
+
+void newUser(vector<User> &users)
+{
+    User user;
+    string input;
+
+    user.id = (users.empty()) ? 1 : ((users.back()).id) + 1;
+
+    cout << "Login :" << endl;
+    getline(cin, input);
+    for (const User &u : users)
+    {
+        if (u.login == input)
+        {
+            cout << "Login already exists. Try again." << endl;
+            return;
+        }
+    }
+    user.login = input;
+
+    cout << "Password :" << endl;
+    getline(cin, input);
+    user.password = input;
+
+    users.push_back(user);
+
+    ofstream file("users_data.txt");
+
+    if (!file)
+    {
+        cout << "Cannot open file." << endl;
+        return;
+    }
+
+    for (const User &user : users)
+    {
+        string textline = to_string(user.id) + '|' + user.login + '|' + user.password + '|';
+        file << textline << endl;
+    }
+
+    return;
+}
+
+int login(const vector<User> &users)
+{
+    string login, password;
+    cout << "Login :" << endl;
+    getline(cin, login);
+    cout << "Password :" << endl;
+    getline(cin, password);
+
+    bool isFound = false;
+    for (const User &u : users)
+    {
+        if (u.login == login && u.password == password)
+        {
+            isFound = true;
+            return u.id;
+        }
+    }
+    if (!isFound)
+    {
+        cout << endl
+             << "Invalid login or password" << endl
+             << endl;
+    }
+    return 0;
+}
+
+int loginMenu()
+{
+    vector<User> users;
+    while (true)
+    {
+        clearScreen();
+        ifstream file("users_data.txt");
+
+        if (file.good())
+        {
+            users.clear();
+            string textline, value;
+            User user;
+            while (getline(file, textline))
+            {
+                stringstream line(textline);
+                getline(line, value, '|');
+                user.id = stoi(value);
+                getline(line, value, '|');
+                user.login = value;
+                getline(line, value, '|');
+                user.password = value;
+                users.push_back(user);
+            }
+        }
+        file.close();
+        for (User user : users)
+        {
+            cout << user.login << " " << user.password << endl;
+        }
+        cout << "1. Log in" << endl;
+        cout << "2. Register" << endl;
+        cout << "9. Exit" << endl;
+
+        int choice;
+        getValidInt(choice);
+
+        while (!(choice == 1 || choice == 2 || choice == 9))
+        {
+            cout << "Choose one of the options available" << endl;
+            getValidInt(choice);
+        }
+        switch (choice)
+        {
+        case 1:
+        {
+            int userId = login(users);
+            if (userId == 0)
+            {
+                waitForEnter();
+                break;
+            }
+            else
+                return userId;
+        }
+        case 2:
+            newUser(users);
+            waitForEnter();
+            break;
+        case 9:
+            return -1;
+        }
+    }
+}
+
 void loadDataFromFile(vector<Person> &friends)
 {
-    ifstream file("datafile_new_format.txt");
+    ifstream file("address_book_data.txt");
 
     if (file.good())
     {
@@ -55,7 +209,7 @@ void loadDataFromFile(vector<Person> &friends)
 
 void sendDataToFile(const vector<Person> &friends)
 {
-    ofstream file("datafile_new_format.txt");
+    ofstream file("address_book_data.txt");
 
     if (!file)
     {
@@ -262,28 +416,83 @@ void modifyRecord(vector<Person> &friends)
     }
 }
 
-int main()
+void changePassword(const int &userId)
 {
-    vector<Person> friends;
-    loadDataFromFile(friends);
+    vector<User> users;
+    ifstream file("users_data.txt");
+
+    if (file.good())
+    {
+        users.clear();
+        string textline, value;
+        User user;
+        while (getline(file, textline))
+        {
+            stringstream line(textline);
+            getline(line, value, '|');
+            user.id = stoi(value);
+            getline(line, value, '|');
+            user.login = value;
+            getline(line, value, '|');
+            user.password = value;
+            users.push_back(user);
+        }
+    }
+    file.close();
+
+    for (User &user : users)
+    {
+        if (user.id == userId)
+        {
+            cout << "Write a new password: ";
+            string newPassword;
+            getline(cin, newPassword);
+            user.password = newPassword;
+            break;
+        }
+    }
+
+    ofstream outFile("users_data.txt");
+
+    if (!outFile)
+    {
+        cout << "Cannot open file." << endl;
+        return;
+    }
+
+    for (const User &user : users)
+    {
+        string textline = to_string(user.id) + '|' + user.login + '|' + user.password + '|';
+        outFile << textline << endl;
+    }
+}
+
+void runAddressBook(vector<Person> &friends, const int &userId)
+{
     while (true)
     {
-        cout << endl << "You have " << friends.size() << " friends in your book" << endl;
+        clearScreen();
+        cout << endl
+            << "Logged in with user ID: " << userId << endl;
+        cout << "You have " << friends.size() << " friends in your book" << endl<<endl;
+
 
         int choice;
         cout << "***Address Book***" << endl;
+        cout << "----------------------" << endl;
         cout << "1. New entry" << endl;
         cout << "2. Search by first name" << endl;
         cout << "3. Search by last name" << endl;
         cout << "4. Show all entries" << endl;
         cout << "5. Delete a person" << endl;
         cout << "6. Edit a person" << endl;
-
-        cout << "9. Exit" << endl;
+        cout << "----------------------" << endl;
+        cout << "8. Change password" << endl;
+        cout << "9. Log out" << endl;
 
         getValidInt(choice);
 
-        while (!(choice == 1 || choice == 2 || choice == 3 || choice == 4 || choice == 5 || choice == 6 || choice == 9))
+        while (!(choice == 1 || choice == 2 || choice == 3 || choice == 4 || choice == 5 || choice == 6 || choice == 8 || choice == 9))
         {
             cout << "Choose one of the options available" << endl;
 
@@ -310,9 +519,29 @@ int main()
         case 6:
             modifyRecord(friends);
             break;
+        case 8:
+            changePassword(userId);
+            break;
         case 9:
-            return 0;
+            return;
         }
+    }
+}
+
+int main()
+{
+    while (true)
+    {
+        clearScreen();
+        int userId = loginMenu();
+        if (userId == -1)
+            return 0;
+
+        
+        vector<Person> friends;
+        loadDataFromFile(friends);
+
+        runAddressBook(friends, userId);
     }
     return 0;
 }

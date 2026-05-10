@@ -1,5 +1,5 @@
 *
-!*.cpp
+!main.cpp
 !*.gitignore
 !*.md
 !Textfile-converter/
