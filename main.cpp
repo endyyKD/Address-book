@@ -3,12 +3,12 @@
 #include <string>
 #include <vector>
 #include <sstream>
-
+#include <cstdio>
 using namespace std;
 
 struct Person
 {
-    int id;
+    int id, userID;
     string name, surname, telNo, email, address;
 };
 
@@ -138,10 +138,7 @@ int loginMenu()
             }
         }
         file.close();
-        for (User user : users)
-        {
-            cout << user.login << " " << user.password << endl;
-        }
+
         cout << "1. Log in" << endl;
         cout << "2. Register" << endl;
         cout << "9. Exit" << endl;
@@ -177,7 +174,7 @@ int loginMenu()
     }
 }
 
-void loadDataFromFile(vector<Person> &friends)
+void loadDataFromFile(vector<Person> &friends, const int &userId)
 {
     ifstream file("address_book_data.txt");
 
@@ -192,6 +189,8 @@ void loadDataFromFile(vector<Person> &friends)
             getline(line, value, '|');
             person.id = stoi(value);
             getline(line, value, '|');
+            person.userID = stoi(value);
+            getline(line, value, '|');
             person.name = value;
             getline(line, value, '|');
             person.surname = value;
@@ -201,27 +200,65 @@ void loadDataFromFile(vector<Person> &friends)
             person.email = value;
             getline(line, value, '|');
             person.address = value;
-            friends.push_back(person);
+            if (person.userID == userId)
+                friends.push_back(person);
         }
     }
     file.close();
 }
 
-void sendDataToFile(const vector<Person> &friends)
+void sendDataToFile(const vector<Person> &friends, const int &userID)
 {
-    ofstream file("address_book_data.txt");
+    ifstream fileIn("address_book_data.txt");
+    if (!fileIn)
+    {
+        ofstream fileOut("address_book_data.txt");
 
-    if (!file)
+        if (!fileOut)
+        {
+            cout << "Cannot open file." << endl;
+            return;
+        }
+
+        for (const Person &person : friends)
+        {
+            string textline = to_string(person.id) + '|' + to_string(person.userID) + '|' + person.name + '|' + person.surname + '|' + person.telNo + '|' + person.email + '|' + person.address + '|';
+            fileOut << textline << endl;
+        }
+        return;
+    }
+
+    ofstream fileOut("address_book_data_temp.txt");
+    if (!fileOut)
     {
         cout << "Cannot open file." << endl;
         return;
     }
 
+    string textline, value;
+    while (getline(fileIn, textline))
+        {
+            stringstream line(textline);
+            getline(line, value, '|');
+            int recordID = stoi(value);
+            getline(line, value, '|');
+            int recordUserID = stoi(value);
+            if (recordUserID != userID)
+            {
+                fileOut << textline << endl;
+            }
+        }
+
     for (const Person &person : friends)
     {
-        string textline = to_string(person.id) + '|' + person.name + '|' + person.surname + '|' + person.telNo + '|' + person.email + '|' + person.address + '|';
-        file << textline << endl;
+        string textline = to_string(person.id) + '|' + to_string(person.userID) + '|' + person.name + '|' + person.surname + '|' + person.telNo + '|' + person.email + '|' + person.address + '|';
+        fileOut << textline << endl;
     }
+    fileIn.close();
+    fileOut.close();
+
+    remove("address_book_data.txt");
+    rename("address_book_data_temp.txt", "address_book_data.txt");
 }
 
 void showOneEntry(const Person &person)
@@ -245,7 +282,7 @@ void showAllEntries(const vector<Person> &friends)
         showOneEntry(person);
 }
 
-void addRecord(vector<Person> &friends)
+void addRecord(vector<Person> &friends, const int &userId)
 {
     string fields[] = {"First name: ", "Last name: ", "Phone number: ", "E-mail address: ", "Address: "};
     Person person;
@@ -253,6 +290,7 @@ void addRecord(vector<Person> &friends)
     string input;
 
     person.id = (friends.empty()) ? 1 : ((friends.back()).id) + 1;
+    person.userID = userId;
 
     for (int i = 0; i < 5; i++)
     {
@@ -261,7 +299,7 @@ void addRecord(vector<Person> &friends)
         *fieldsInStruct[i] = input;
     }
     friends.push_back(person);
-    sendDataToFile(friends);
+    sendDataToFile(friends, userId);
 }
 
 void searchFirstName(const vector<Person> &friends)
@@ -308,7 +346,7 @@ void searchLastName(const vector<Person> &friends)
     }
 }
 
-void deletePerson(vector<Person> &friends)
+void deletePerson(vector<Person> &friends, const int &userId)
 {
     cout << "Please give an ID of a person you want to remove: ";
     int id;
@@ -322,7 +360,7 @@ void deletePerson(vector<Person> &friends)
         int foundIndex = -1;
         for (size_t i = 0; i < friends.size(); i++)
         {
-            if ((friends.at(i)).id == id)
+            if ((friends.at(i)).id == id && (friends.at(i)).userID == userId)
             {
                 foundIndex = i;
                 cout << "Person with ID number " << id << " is found and removed." << endl;
@@ -338,12 +376,12 @@ void deletePerson(vector<Person> &friends)
         }
         else
         {
-            sendDataToFile(friends);
+            sendDataToFile(friends, userId);
         }
     }
 }
 
-void modifyRecord(vector<Person> &friends)
+void modifyRecord(vector<Person> &friends, const int &userId)
 {
     cout << "Please give an ID of a person you want to edit: ";
     int id;
@@ -351,7 +389,7 @@ void modifyRecord(vector<Person> &friends)
     int foundIndex = -1;
     for (size_t i = 0; i < friends.size(); i++)
     {
-        if ((friends.at(i)).id == id)
+        if ((friends.at(i)).id == id && (friends.at(i)).userID == userId)
         {
             foundIndex = i;
             cout << "Person with ID number " << id << " is found. What do you want to edit?" << endl;
@@ -412,7 +450,7 @@ void modifyRecord(vector<Person> &friends)
     }
     else
     {
-        sendDataToFile(friends);
+        sendDataToFile(friends, userId);
     }
 }
 
@@ -473,9 +511,9 @@ void runAddressBook(vector<Person> &friends, const int &userId)
     {
         clearScreen();
         cout << endl
-            << "Logged in with user ID: " << userId << endl;
-        cout << "You have " << friends.size() << " friends in your book" << endl<<endl;
-
+             << "Logged in with user ID: " << userId << endl;
+        cout << "You have " << friends.size() << " friends in your book" << endl
+             << endl;
 
         int choice;
         cout << "***Address Book***" << endl;
@@ -502,25 +540,32 @@ void runAddressBook(vector<Person> &friends, const int &userId)
         switch (choice)
         {
         case 1:
-            addRecord(friends);
+            addRecord(friends, userId);
+            waitForEnter();
             break;
         case 2:
             searchFirstName(friends);
+            waitForEnter();
             break;
         case 3:
             searchLastName(friends);
+            waitForEnter();
             break;
         case 4:
             showAllEntries(friends);
+            waitForEnter();
             break;
         case 5:
-            deletePerson(friends);
+            deletePerson(friends, userId);
+            waitForEnter();
             break;
         case 6:
-            modifyRecord(friends);
+            modifyRecord(friends, userId);
+            waitForEnter();
             break;
         case 8:
             changePassword(userId);
+            waitForEnter();
             break;
         case 9:
             return;
@@ -537,9 +582,8 @@ int main()
         if (userId == -1)
             return 0;
 
-        
         vector<Person> friends;
-        loadDataFromFile(friends);
+        loadDataFromFile(friends, userId);
 
         runAddressBook(friends, userId);
     }
