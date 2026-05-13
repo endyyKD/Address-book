@@ -44,6 +44,23 @@ void waitForEnter()
     cin.ignore(1000, '\n');
 }
 
+void saveUsersToFile(const vector<User> &users)
+{
+    ofstream file("users_data.txt");
+
+    if (!file)
+    {
+        cout << "Cannot open file." << endl;
+        return;
+    }
+
+    for (const User &user : users)
+    {
+        string textline = to_string(user.id) + '|' + user.login + '|' + user.password + '|';
+        file << textline << endl;
+    }
+}
+
 void newUser(vector<User> &users)
 {
     User user;
@@ -69,19 +86,7 @@ void newUser(vector<User> &users)
 
     users.push_back(user);
 
-    ofstream file("users_data.txt");
-
-    if (!file)
-    {
-        cout << "Cannot open file." << endl;
-        return;
-    }
-
-    for (const User &user : users)
-    {
-        string textline = to_string(user.id) + '|' + user.login + '|' + user.password + '|';
-        file << textline << endl;
-    }
+    saveUsersToFile(users);
 
     return;
 }
@@ -112,32 +117,39 @@ int login(const vector<User> &users)
     return 0;
 }
 
+vector<User> loadUsersFromFile()
+{
+    vector<User> users;
+    ifstream file("users_data.txt");
+
+    if (file.good())
+    {
+        users.clear();
+        string textline, value;
+        User user;
+        while (getline(file, textline))
+        {
+            stringstream line(textline);
+            getline(line, value, '|');
+            user.id = stoi(value);
+            getline(line, value, '|');
+            user.login = value;
+            getline(line, value, '|');
+            user.password = value;
+            users.push_back(user);
+        }
+    }
+    file.close();
+    return users;
+}
+
 int loginMenu()
 {
     vector<User> users;
     while (true)
     {
         clearScreen();
-        ifstream file("users_data.txt");
-
-        if (file.good())
-        {
-            users.clear();
-            string textline, value;
-            User user;
-            while (getline(file, textline))
-            {
-                stringstream line(textline);
-                getline(line, value, '|');
-                user.id = stoi(value);
-                getline(line, value, '|');
-                user.login = value;
-                getline(line, value, '|');
-                user.password = value;
-                users.push_back(user);
-            }
-        }
-        file.close();
+        vector<User> users = loadUsersFromFile();
 
         cout << "1. Log in" << endl;
         cout << "2. Register" << endl;
@@ -172,6 +184,26 @@ int loginMenu()
             return -1;
         }
     }
+}
+
+void changePassword(const int &userId)
+{
+    vector<User> users = loadUsersFromFile();
+
+    for (User &user : users)
+    {
+        if (user.id == userId)
+        {
+            cout << "Write a new password: ";
+            string newPassword;
+            getline(cin, newPassword);
+            user.password = newPassword;
+            break;
+        }
+    }
+
+    saveUsersToFile(users);
+
 }
 
 void loadDataFromFile(vector<Person> &friends, const int &userId)
@@ -451,57 +483,6 @@ void modifyRecord(vector<Person> &friends, const int &userId)
     else
     {
         sendDataToFile(friends, userId);
-    }
-}
-
-void changePassword(const int &userId)
-{
-    vector<User> users;
-    ifstream file("users_data.txt");
-
-    if (file.good())
-    {
-        users.clear();
-        string textline, value;
-        User user;
-        while (getline(file, textline))
-        {
-            stringstream line(textline);
-            getline(line, value, '|');
-            user.id = stoi(value);
-            getline(line, value, '|');
-            user.login = value;
-            getline(line, value, '|');
-            user.password = value;
-            users.push_back(user);
-        }
-    }
-    file.close();
-
-    for (User &user : users)
-    {
-        if (user.id == userId)
-        {
-            cout << "Write a new password: ";
-            string newPassword;
-            getline(cin, newPassword);
-            user.password = newPassword;
-            break;
-        }
-    }
-
-    ofstream outFile("users_data.txt");
-
-    if (!outFile)
-    {
-        cout << "Cannot open file." << endl;
-        return;
-    }
-
-    for (const User &user : users)
-    {
-        string textline = to_string(user.id) + '|' + user.login + '|' + user.password + '|';
-        outFile << textline << endl;
     }
 }
 
